@@ -27,7 +27,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ vars.DOCKERHUB_USERNAME }}/hello-app:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/hello-app:${{ github.sha }}
 
   deploy:
     needs: build
