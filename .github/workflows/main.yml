@@ -31,11 +31,17 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: self-hosted            # runs on YOUR KodeKloud runner
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-      - name: Put the real image name into the manifest
-        run: sed -i "s|_IMAGE_|${{ vars.DOCKERHUB_USERNAME }}/hello-app:${{ github.sha }}|g" k8s/deployment.yaml
+      - name: Deploy to KodeKloud
+        run: |
+          rm -rf repo
+          git clone https://github.com/vinayakssh/cicd-practice.git repo
+          cd repo
+          git checkout ${{ github.sha }}
+          sed -i "s|_IMAGE_|${{ secrets.DOCKERHUB_USERNAME }}/hello-app:${{ github.sha }}|g" k8s/deployment.yaml
+          kubectl apply -f k8s/
+          kubectl -n dev rollout status deploy/hello-app --timeout=120s
       - name: Deploy to the cluster
         run: kubectl apply -f k8s/
       - name: Wait until it is healthy
