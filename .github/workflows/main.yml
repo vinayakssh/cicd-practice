@@ -1,0 +1,42 @@
+name: CI-CD Practice
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install
+      - run: npm test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/hello-app:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: self-hosted            # runs on YOUR KodeKloud runner
+    steps:
+      - uses: actions/checkout@v4
+      - name: Put the real image name into the manifest
+        run: sed -i "s|_IMAGE_|${{ vars.DOCKERHUB_USERNAME }}/hello-app:${{ github.sha }}|g" k8s/deployment.yaml
+      - name: Deploy to the cluster
+        run: kubectl apply -f k8s/
+      - name: Wait until it is healthy
+        run: kubectl -n dev rollout status deploy/hello-app --timeout=120s
